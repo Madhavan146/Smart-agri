@@ -143,7 +143,39 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* 2. Simplified Daily Action Checklist (Farmer-First Layout) */}
+      {/* 2. Terminal Quick Links Grid (Modules Menu moved on top) */}
+      <div className="space-y-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-brand-textSecondaryLight/80 dark:text-brand-textSecondaryDark/80">
+          Command Terminal Modules
+        </h2>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {modules.map((mod) => {
+            const Icon = mod.icon;
+            return (
+              <motion.div
+                key={mod.id}
+                whileHover={{ scale: 1.02 }}
+                className="group"
+              >
+                <Link
+                  to={mod.path}
+                  className="flex items-center gap-3 p-4 bg-white dark:bg-brand-darkSurface border border-brand-borderLight dark:border-brand-borderDark rounded-xl premium-shadow hover:border-brand-primary/30 dark:hover:border-brand-gold/30 transition-all text-left"
+                >
+                  <div className={`p-2 rounded-lg shrink-0 ${mod.color}`}>
+                    <Icon className="w-4.5 h-4.5" />
+                  </div>
+                  <h3 className="font-bold text-xs text-brand-primary dark:text-[#EDEFE9] group-hover:text-brand-gold transition-colors line-clamp-2 leading-snug">
+                    {mod.title}
+                  </h3>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Simplified Daily Action Checklist (Farmer-First Layout) */}
       <div className="bg-white dark:bg-brand-darkSurface border border-brand-borderLight dark:border-brand-borderDark p-6 sm:p-8 rounded-2xl premium-shadow space-y-6">
         <div className="flex items-center gap-2.5 border-b border-brand-borderLight dark:border-brand-borderDark pb-4">
           <CheckCircle className="w-6 h-6 text-brand-gold shrink-0" />
@@ -218,7 +250,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 3. Core Quick-Read Metric Blocks */}
+      {/* 4. Core Quick-Read Metric Blocks */}
       <div className="space-y-4">
         <h2 className="text-xs font-bold uppercase tracking-wider text-brand-textSecondaryLight/80 dark:text-brand-textSecondaryDark/80">
           {t('dashboard.metrics_title')}
@@ -310,7 +342,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 4. Show/Hide Advanced Charts Toggle (For simple layout preference) */}
+      {/* 5. Show/Hide Advanced Charts Toggle (For simple layout preference) */}
       <div className="bg-white dark:bg-brand-darkSurface border border-brand-borderLight dark:border-brand-borderDark rounded-2xl p-4 premium-shadow flex flex-col items-center">
         <button
           onClick={() => setShowCharts(!showCharts)}
@@ -383,38 +415,6 @@ export default function Dashboard() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* 5. Terminal Quick Links Grid (Modules Menu at the bottom) */}
-      <div className="space-y-4">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-brand-textSecondaryLight/80 dark:text-brand-textSecondaryDark/80">
-          Command Terminal Modules
-        </h2>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {modules.map((mod) => {
-            const Icon = mod.icon;
-            return (
-              <motion.div
-                key={mod.id}
-                whileHover={{ scale: 1.02 }}
-                className="group"
-              >
-                <Link
-                  to={mod.path}
-                  className="flex items-center gap-3 p-4 bg-white dark:bg-brand-darkSurface border border-brand-borderLight dark:border-brand-borderDark rounded-xl premium-shadow hover:border-brand-primary/30 dark:hover:border-brand-gold/30 transition-all text-left"
-                >
-                  <div className={`p-2 rounded-lg shrink-0 ${mod.color}`}>
-                    <Icon className="w-4.5 h-4.5" />
-                  </div>
-                  <h3 className="font-bold text-xs text-brand-primary dark:text-[#EDEFE9] group-hover:text-brand-gold transition-colors line-clamp-2 leading-snug">
-                    {mod.title}
-                  </h3>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
       </div>
 
     </div>
