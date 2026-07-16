@@ -55,7 +55,10 @@ export function AppProvider({ children }) {
   };
 
   const toggleLanguage = () => {
-    setLanguage(prev => (prev === 'en' ? 'ta' : 'en'));
+    const nextLang = language === 'en' ? 'ta' : 'en';
+    setLanguage(nextLang);
+    i18n.changeLanguage(nextLang);
+    localStorage.setItem('smartagri_lang', nextLang);
   };
 
   const toggleTheme = () => {

@@ -140,6 +140,17 @@
     "current_crop_pill": "Active Crop: {crop}",
     "current_district_pill": "District: {district}",
     "change_crop": "Change Crop Selection",
+    "show_charts": "Show Advanced Charts & Details",
+    "hide_charts": "Hide Advanced Charts & Details",
+    "checklist_title": "Today's Farm Action Checklist",
+    "metrics_title": "Live Farm Metrics at a Glance",
+    "nutrient_box": "Nutrient Advice",
+    "market_box": "Market Prices",
+    "weather_box": "Weather & Storage",
+    "growth_stage_bullet": "Growth Stage: Sowing (Basal Application)",
+    "soil_bullet": "Soil Target: Apply {n}-{p}-{k} NPK ratio",
+    "weather_bullet": "Weather: stable conditions. Safe to apply fertilizer today.",
+    "officer_bullet": "Extension Officer: Call {name} for subsidy help.",
     "modules": {
       "fertilizer": {
         "title": "Fertilizer Scheduler",
