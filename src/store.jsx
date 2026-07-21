@@ -10,6 +10,12 @@ export function AppProvider({ children }) {
   const [language, setLanguage] = useState(() => localStorage.getItem('smartagri_lang') || 'en');
   const [theme, setTheme] = useState(() => localStorage.getItem('smartagri_theme') || 'light');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('smartagri_gemini_key') || '');
+  
+  // New Map states
+  const [latitude, setLatitude] = useState(() => parseFloat(localStorage.getItem('smartagri_lat')) || 10.7905);
+  const [longitude, setLongitude] = useState(() => parseFloat(localStorage.getItem('smartagri_lng')) || 78.7047);
+  const [address, setAddress] = useState(() => localStorage.getItem('smartagri_address') || '');
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState(() => localStorage.getItem('smartagri_maps_key') || '');
 
   // Sync language with i18n
   useEffect(() => {
@@ -28,11 +34,17 @@ export function AppProvider({ children }) {
     localStorage.setItem('smartagri_theme', theme);
   }, [theme]);
 
-  const updateOnboarding = (name, district) => {
+  const updateOnboarding = (name, district, lat, lng, addr) => {
     setUserName(name);
     setSelectedDistrict(district);
+    setLatitude(lat);
+    setLongitude(lng);
+    setAddress(addr);
     localStorage.setItem('smartagri_user', name);
     localStorage.setItem('smartagri_district', district);
+    localStorage.setItem('smartagri_lat', lat.toString());
+    localStorage.setItem('smartagri_lng', lng.toString());
+    localStorage.setItem('smartagri_address', addr);
   };
 
   const updateCrop = (crop) => {
@@ -45,13 +57,24 @@ export function AppProvider({ children }) {
     localStorage.setItem('smartagri_gemini_key', key);
   };
 
+  const updateMapsApiKey = (key) => {
+    setGoogleMapsApiKey(key);
+    localStorage.setItem('smartagri_maps_key', key);
+  };
+
   const resetAll = () => {
     setUserName('');
     setSelectedDistrict('');
     setSelectedCrop('');
+    setAddress('');
+    setLatitude(10.7905);
+    setLongitude(78.7047);
     localStorage.removeItem('smartagri_user');
     localStorage.removeItem('smartagri_district');
     localStorage.removeItem('smartagri_crop');
+    localStorage.removeItem('smartagri_lat');
+    localStorage.removeItem('smartagri_lng');
+    localStorage.removeItem('smartagri_address');
   };
 
   const toggleLanguage = () => {
@@ -83,6 +106,7 @@ export function AppProvider({ children }) {
               text: `You are a professional agronomist representing Tamil Nadu Agricultural University (TNAU) and local extension offices. You are advising a farmer named ${userName} who is cultivating ${selectedCrop} in ${selectedDistrict} district.
               Local Soil profile: ${soilProfile}.
               Agro-Climatic Zone: ${zoneName}.
+              Farm Location Coordinates: Lat ${latitude}, Lng ${longitude}. Address: ${address}.
               
               Answer the farmer's agricultural query with 1000x precision, offering specific scientific treatments, ratios, and weather-defensive tactics. Keep the response concise, practical, and highly encouraging.
               
@@ -116,9 +140,14 @@ export function AppProvider({ children }) {
       language,
       theme,
       apiKey,
+      latitude,
+      longitude,
+      address,
+      googleMapsApiKey,
       updateOnboarding,
       updateCrop,
       updateApiKey,
+      updateMapsApiKey,
       resetAll,
       toggleLanguage,
       toggleTheme,

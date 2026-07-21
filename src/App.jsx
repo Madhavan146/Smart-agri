@@ -13,9 +13,9 @@ import {
   ValueAddedStub,
   StorageStub,
   SchemesStub,
-  OfficerStub,
-  DoctorStub
+  OfficerStub
 } from './pages/Stubs.jsx';
+import DoctorStub from './pages/CropDoctor.jsx';
 
 // Guard for routes that require onboarding (district and name)
 function OnboardingGuard({ children }) {

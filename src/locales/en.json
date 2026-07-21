@@ -83,7 +83,18 @@
     "district_placeholder": "Choose a district",
     "get_started": "Enter Command Center",
     "validation_name": "Please enter your name to proceed.",
-    "validation_district": "Please select a district to proceed."
+    "validation_district": "Please select a district to proceed.",
+    "validation_map": "Please select a location on the map.",
+    "maps": {
+      "title": "Select Farm Location",
+      "subtitle": "Search or place marker on Google Maps",
+      "search_placeholder": "Search village, farm address, or city...",
+      "load_error": "Failed to load Google Maps script. Displaying offline map."
+    },
+    "district_confirm": {
+      "title": "Confirm District",
+      "subtitle": "Verify resolved zone for TNAU calculations"
+    }
   },
   "recommendation": {
     "title": "Crop Suitability Analysis",
@@ -295,7 +306,20 @@
     "doctor_assigned": "Dr. {name}, M.Sc. Agronomy (Verified Expert)",
     "doctor_online": "Online & Active",
     "send_msg": "Send Message",
-    "chat_context": "Starting chat with context: Cultivating {crop} in {district} soil."
+    "chat_context": "Starting chat with context: Cultivating {crop} in {district} soil.",
+    "tab_diagnostic": "AI Disease Scanner",
+    "tab_expert": "Specialist Consult",
+    "upload": {
+      "title": "Upload Foliage Photo",
+      "btn_diagnose": "Run Plant Diagnosis"
+    },
+    "scanning": {
+      "isolating": "Isolating foliage tissue...",
+      "analyzing": "Analyzing leaf spot pigmentation...",
+      "checking": "Checking pathology database...",
+      "finalizing": "Finalizing plant diagnosis...",
+      "ai_thinking": "Querying Google Gemini AI Model..."
+    }
   },
   "ai": {
     "greeting": "Vanakkam, {name}! I am AgriSmart AI. I see you are cultivating {crop} in {district}. How can I assist you with your crops today?",
