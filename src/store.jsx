@@ -34,7 +34,7 @@ export function AppProvider({ children }) {
     localStorage.setItem('smartagri_theme', theme);
   }, [theme]);
 
-  const updateOnboarding = (name, district, lat, lng, addr) => {
+  const updateOnboarding = (name, district, lat = 10.7905, lng = 78.7047, addr = '') => {
     setUserName(name);
     setSelectedDistrict(district);
     setLatitude(lat);
@@ -42,9 +42,9 @@ export function AppProvider({ children }) {
     setAddress(addr);
     localStorage.setItem('smartagri_user', name);
     localStorage.setItem('smartagri_district', district);
-    localStorage.setItem('smartagri_lat', lat.toString());
-    localStorage.setItem('smartagri_lng', lng.toString());
-    localStorage.setItem('smartagri_address', addr);
+    localStorage.setItem('smartagri_lat', (lat !== undefined ? lat : 10.7905).toString());
+    localStorage.setItem('smartagri_lng', (lng !== undefined ? lng : 78.7047).toString());
+    localStorage.setItem('smartagri_address', addr || '');
   };
 
   const updateCrop = (crop) => {
