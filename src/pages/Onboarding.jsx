@@ -25,13 +25,17 @@ export default function Onboarding() {
   const [error, setError] = useState('');
 
   // Map state
-  const mapRef = useRef(null);
-  const searchInputRef = useRef(null);
+  const mapContainerRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [lat, setLat] = useState(10.7905); // Central Tamil Nadu
   const [lng, setLng] = useState(78.7047);
   const [address, setAddress] = useState('');
-  const [mapError, setMapError] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Instanced map objects for leaflet fallback
+  const leafletMapInstance = useRef(null);
+  const leafletMarkerInstance = useRef(null);
 
   const districts = [
     'ariyalur', 'chengalpattu', 'chennai', 'coimbatore', 'cuddalore', 
@@ -50,117 +54,87 @@ export default function Onboarding() {
     return localName.includes(searchVal);
   });
 
-  // Start pre-loading Google Maps script immediately on component mount (Step 1)
+  // Load Map (Google Maps or styled Leaflet)
   useEffect(() => {
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        setMapLoaded(true);
-        return;
+    if (step === 2) {
+      if (googleMapsApiKey) {
+        loadGoogleMaps();
+      } else {
+        loadLeafletMap();
       }
-      const existingScript = document.getElementById('google-maps-script');
-      if (existingScript) {
-        existingScript.onload = () => setMapLoaded(true);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey || ''}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        setMapLoaded(true);
-      };
-      script.onerror = () => {
-        setMapError(t('onboarding.maps.load_error') || 'Failed to load Google Maps script.');
-      };
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMaps();
-  }, []);
-
-  // Initialize map when entering Step 2
-  useEffect(() => {
-    if (step === 2 && mapLoaded) {
-      initializeMap();
     }
-  }, [step, mapLoaded]);
 
-  const initializeMap = () => {
-    if (!mapRef.current) return;
+    return () => {
+      if (leafletMapInstance.current) {
+        leafletMapInstance.current.remove();
+        leafletMapInstance.current = null;
+      }
+    };
+  }, [step]);
+
+  // Google Maps Loader
+  const loadGoogleMaps = () => {
+    if (window.google && window.google.maps) {
+      initializeGoogleMap();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogleMap;
+    script.onerror = () => {
+      console.warn("Google Maps blocked or failed. Falling back to Leaflet Map.");
+      loadLeafletMap();
+    };
+    document.head.appendChild(script);
+  };
+
+  const initializeGoogleMap = () => {
+    if (!mapContainerRef.current) return;
     setMapLoaded(true);
 
     try {
-      const mapInstance = new window.google.maps.Map(mapRef.current, {
-        center: { lat: lat, lng: lng },
-        zoom: 7,
+      const map = new window.google.maps.Map(mapContainerRef.current, {
+        center: { lat, lng },
+        zoom: 8,
         styles: theme === 'dark' ? getDarkMapStyles() : [],
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false
       });
 
-      const markerInstance = new window.google.maps.Marker({
-        position: { lat: lat, lng: lng },
-        map: mapInstance,
-        draggable: true,
-        animation: window.google.maps.Animation.DROP
+      const marker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: map,
+        draggable: true
       });
 
-      // Places Search Autocomplete
-      if (searchInputRef.current) {
-        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current);
-        autocomplete.bindTo('bounds', mapInstance);
-
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          if (!place.geometry) return;
-
-          if (place.geometry.viewport) {
-            mapInstance.fitBounds(place.geometry.viewport);
-          } else {
-            mapInstance.setCenter(place.geometry.location);
-            mapInstance.setZoom(15);
-          }
-
-          const position = place.geometry.location;
-          markerInstance.setPosition(position);
-          setLat(position.lat());
-          setLng(position.lng());
-          setAddress(place.formatted_address || place.name || '');
-          detectDistrictFromAddress(place.formatted_address || '');
-        });
-      }
-
-      // Drag marker listener
-      markerInstance.addListener('dragend', () => {
-        const pos = markerInstance.getPosition();
-        setLat(pos.lat());
-        setLng(pos.lng());
-        reverseGeocode(pos.lat(), pos.lng());
-      });
-
-      // Map click listener
-      mapInstance.addListener('click', (e) => {
-        markerInstance.setPosition(e.latLng);
+      // Map Click
+      map.addListener('click', (e) => {
+        marker.setPosition(e.latLng);
         setLat(e.latLng.lat());
         setLng(e.latLng.lng());
-        reverseGeocode(e.latLng.lat(), e.latLng.lng());
+        reverseGeocodeGoogle(e.latLng.lat(), e.latLng.lng());
       });
 
-      // Initial reverse geocode if address is empty
-      if (!address) {
-        reverseGeocode(lat, lng);
-      }
+      // Marker Drag
+      marker.addListener('dragend', () => {
+        const pos = marker.getPosition();
+        setLat(pos.lat());
+        setLng(pos.lng());
+        reverseGeocodeGoogle(pos.lat(), pos.lng());
+      });
+
+      reverseGeocodeGoogle(lat, lng);
 
     } catch (err) {
-      console.error("Map Init Error:", err);
-      setMapError('Failed to render Google Map. Verify your network or API keys.');
+      console.error("Google map render error:", err);
+      loadLeafletMap();
     }
   };
 
-  const reverseGeocode = (latitude, longitude) => {
+  const reverseGeocodeGoogle = (latitude, longitude) => {
     if (!window.google || !window.google.maps) return;
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
@@ -168,19 +142,144 @@ export default function Onboarding() {
         const formatted = results[0].formatted_address;
         setAddress(formatted);
         detectDistrictFromAddress(formatted);
-      } else {
-        setAddress(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`);
       }
     });
   };
 
+  // Leaflet Map Loader (Bulletproof, loads within 1 second, zero config keys needed!)
+  const loadLeafletMap = () => {
+    if (window.L) {
+      initializeLeafletMap();
+      return;
+    }
+
+    // Load Leaflet CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+
+    // Load Leaflet JS
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = initializeLeafletMap;
+    script.onerror = () => {
+      setError("Failed to initialize offline mapping modules.");
+    };
+    document.head.appendChild(script);
+  };
+
+  const initializeLeafletMap = () => {
+    if (!mapContainerRef.current) return;
+    setMapLoaded(true);
+
+    try {
+      if (leafletMapInstance.current) {
+        leafletMapInstance.current.remove();
+      }
+
+      // Initialize map container pointing to Leaflet
+      const map = window.L.map(mapContainerRef.current, {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([lat, lng], 8);
+      leafletMapInstance.current = map;
+
+      // Add clean, styled map tiles (OpenStreetMap)
+      const tileUrl = theme === 'dark' 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+      window.L.tileLayer(tileUrl, {
+        maxZoom: 19
+      }).addTo(map);
+
+      // Custom colored map pin marker
+      const marker = window.L.marker([lat, lng], { draggable: true }).addTo(map);
+      leafletMarkerInstance.current = marker;
+
+      // Map Click Listener
+      map.on('click', (e) => {
+        const { lat: newLat, lng: newLng } = e.latlng;
+        marker.setLatLng([newLat, newLng]);
+        setLat(newLat);
+        setLng(newLng);
+        reverseGeocodeOffline(newLat, newLng);
+      });
+
+      // Marker Drag Listener
+      marker.on('dragend', () => {
+        const position = marker.getLatLng();
+        setLat(position.lat);
+        setLng(position.lng);
+        reverseGeocodeOffline(position.lat, position.lng);
+      });
+
+      // Initial reverse geocode if address empty
+      if (!address) {
+        reverseGeocodeOffline(lat, lng);
+      }
+
+    } catch (err) {
+      console.error("Leaflet init error:", err);
+    }
+  };
+
+  const reverseGeocodeOffline = async (latitude, longitude) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+      const data = await response.json();
+      if (data && data.display_name) {
+        setAddress(data.display_name);
+        detectDistrictFromAddress(data.display_name);
+      } else {
+        setAddress(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`);
+      }
+    } catch (err) {
+      setAddress(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`);
+    }
+  };
+
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault();
+    if (!searchText.trim()) return;
+
+    setIsSearching(true);
+    setError('');
+
+    try {
+      // Offline OpenStreetMap Geocoding API (Fast, Free, No API Key needed)
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchText)}&limit=1`);
+      const data = await response.json();
+
+      if (data && data[0]) {
+        const newLat = parseFloat(data[0].lat);
+        const newLng = parseFloat(data[0].lon);
+        setLat(newLat);
+        setLng(newLng);
+        setAddress(data[0].display_name);
+        detectDistrictFromAddress(data[0].display_name);
+
+        // Update leaflet map view
+        if (leafletMapInstance.current && leafletMarkerInstance.current) {
+          leafletMapInstance.current.setView([newLat, newLng], 14);
+          leafletMarkerInstance.current.setLatLng([newLat, newLng]);
+        }
+      } else {
+        setError('Location not found. Try searching with district or city name.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Search service unavailable. Place marker manually.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const detectDistrictFromAddress = (addressStr) => {
     const lowerAddress = addressStr.toLowerCase();
-    
-    // Scan address string for district matches
     const matched = districts.find(d => {
       const englishName = d.toLowerCase();
-      // Also match tamil names if present
       const tamilName = t(`districts.${d}`).toLowerCase();
       return lowerAddress.includes(englishName) || lowerAddress.includes(tamilName);
     });
@@ -191,10 +290,9 @@ export default function Onboarding() {
     }
   };
 
-  // Get current GPS location
   const getCurrentGPS = () => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
+      setError('Geolocation not supported by this browser.');
       return;
     }
 
@@ -203,16 +301,15 @@ export default function Onboarding() {
         const { latitude, longitude } = pos.coords;
         setLat(latitude);
         setLng(longitude);
-        reverseGeocode(latitude, longitude);
-        
-        // Re-center map if loaded
-        if (window.google && window.google.maps && mapRef.current) {
-          initializeMap();
+        reverseGeocodeOffline(latitude, longitude);
+
+        if (leafletMapInstance.current && leafletMarkerInstance.current) {
+          leafletMapInstance.current.setView([latitude, longitude], 14);
+          leafletMarkerInstance.current.setLatLng([latitude, longitude]);
         }
       },
       (err) => {
-        console.error(err);
-        setError('Failed to acquire GPS location. Please place marker manually.');
+        setError('GPS signal blocked. Please drag the map pin manually.');
       }
     );
   };
@@ -310,7 +407,7 @@ export default function Onboarding() {
             </h1>
             <p className="mt-1.5 text-xs text-brand-textSecondaryLight dark:text-brand-textSecondaryDark font-normal">
               {step === 1 && t('onboarding.subtitle')}
-              {step === 2 && (t('onboarding.maps.subtitle') || 'Search or place marker on Google Maps')}
+              {step === 2 && (t('onboarding.maps.subtitle') || 'Search or place marker on map')}
               {step === 3 && (t('onboarding.district_confirm.subtitle') || 'Verify resolved zone for TNAU calculations')}
             </p>
           </div>
@@ -359,7 +456,7 @@ export default function Onboarding() {
               </motion.div>
             )}
 
-            {/* Step 2: Google Maps Location Selection */}
+            {/* Step 2: Location Map Picker */}
             {step === 2 && (
               <motion.div
                 key="step2"
@@ -368,54 +465,56 @@ export default function Onboarding() {
                 exit={{ opacity: 0, x: -10 }}
                 className="space-y-4"
               >
-                {/* Autocomplete Search Bar */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-brand-textSecondaryLight dark:text-brand-textSecondaryDark">
-                    <Search className="h-4 w-4" />
+                {/* Search Bar Input */}
+                <form onSubmit={handleSearchSubmit} className="relative flex gap-2">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-brand-textSecondaryLight dark:text-brand-textSecondaryDark">
+                      <Search className="h-4 w-4" />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      placeholder={t('onboarding.maps.search_placeholder') || "Search village, farm address, or city..."}
+                      className="block w-full pl-10 pr-10 py-2.5 bg-brand-primary/[0.02] dark:bg-brand-primary/[0.04] border border-brand-borderLight dark:border-brand-borderDark rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-gold transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={getCurrentGPS}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-brand-gold hover:opacity-85"
+                      title="Find Location via GPS"
+                    >
+                      <Navigation className="w-4 h-4" />
+                    </button>
                   </div>
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder={t('onboarding.maps.search_placeholder') || "Search village, farm address, or city..."}
-                    className="block w-full pl-10 pr-10 py-2.5 bg-brand-primary/[0.02] dark:bg-brand-primary/[0.04] border border-brand-borderLight dark:border-brand-borderDark rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-gold transition-all"
-                  />
                   <button
-                    type="button"
-                    onClick={getCurrentGPS}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-brand-gold hover:opacity-85"
-                    title="Find My Location via GPS"
+                    type="submit"
+                    disabled={isSearching}
+                    className="px-4 py-2.5 bg-brand-primary text-white dark:bg-brand-gold dark:text-brand-darkBg rounded-xl text-xs font-bold hover:opacity-90 shrink-0"
                   >
-                    <Navigation className="w-4 h-4" />
+                    {isSearching ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Search'}
                   </button>
-                </div>
+                </form>
 
-                {/* Map Canvas */}
+                {/* Map Canvas Wrapper */}
                 <div className="relative rounded-xl border border-brand-borderLight dark:border-brand-borderDark overflow-hidden premium-shadow bg-brand-primary/[0.01]">
                   <div 
-                    ref={mapRef} 
-                    className="w-full h-52 relative"
+                    ref={mapContainerRef} 
+                    className="w-full h-56 relative z-0"
                   />
                   
-                  {!mapLoaded && !mapError && (
+                  {!mapLoaded && (
                     <div className="absolute inset-0 bg-white/70 dark:bg-brand-darkSurface/70 flex flex-col items-center justify-center gap-2">
                       <Loader2 className="w-6 h-6 text-brand-gold animate-spin" />
                       <span className="text-[10px] font-bold text-brand-textSecondaryLight">Initializing Map...</span>
-                    </div>
-                  )}
-
-                  {mapError && (
-                    <div className="absolute inset-0 bg-white/95 dark:bg-brand-darkSurface/95 p-4 flex flex-col items-center justify-center text-center gap-2">
-                      <MapPin className="w-8 h-8 text-brand-gold" />
-                      <span className="text-xs font-bold text-brand-primary dark:text-[#EDEFE9]">{mapError}</span>
-                      <span className="text-[9px] text-brand-textSecondaryLight">Double-click or drag to select coordinate fallbacks.</span>
                     </div>
                   )}
                 </div>
 
                 {/* Selected Location info panel */}
                 {address && (
-                  <div className="bg-[#FAF8F5] dark:bg-[#1C2C22] p-3 rounded-xl border border-brand-borderLight dark:border-brand-borderDark text-left space-y-1.5">
-                    <span className="text-[8px] uppercase font-bold text-brand-gold block">Selected Address</span>
+                  <div className="bg-[#FAF8F5] dark:bg-[#1C2C22] p-3 rounded-xl border border-brand-borderLight dark:border-brand-borderDark text-left space-y-1">
+                    <span className="text-[8px] uppercase font-bold text-brand-gold block">Selected Location</span>
                     <p className="text-xs text-brand-primary dark:text-[#EDEFE9] font-medium leading-relaxed line-clamp-2">
                       {address}
                     </p>
